@@ -17,7 +17,7 @@
 
 #define DEFAULT_SAMPLE_RATE 44100
 #define FFT_SIZE 4096
-#define DEFAULT_NUM_BARS 56
+#define DEFAULT_NUM_BARS 100
 #define DEFAULT_FPS 60
 #define MIN_FREQ 40.0f
 #define MAX_FREQ_CAP 16000.0f
@@ -149,7 +149,7 @@ int main(int argc, char **argv)
     if (target_fps <= 0)
         target_fps = DEFAULT_FPS;
     if (sensitivity <= 0.0f)
-        sensitivity = 1.0f;
+        sensitivity = 0.05f;
 
     signal(SIGINT, handle_sigint);
 
