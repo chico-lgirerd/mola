@@ -4,6 +4,8 @@ Mola is a simple audio visualizer, made for Linux, written in C, using SDL2 and 
 
 This was inspired by the look of [Cavasik](https://github.com/TheWisker/Cavasik) and [Cavalier](https://github.com/NickvisionApps/Cavalier), both based on [cava](https://github.com/karlstav/cava)
 
+![Dusk Bars](img/dusk.png)
+
 # Download
 
 You can find the latest AppImage package in the **Releases** tab of this repo
@@ -76,3 +78,16 @@ PRESS `ESC` or `Q` to exit
 You can also resize the window, the bars are made to adapt automatically !
 
 Icon : Designed by rawpixel.com / Freepik 
+
+### Theme schowcase
+
+![Dusk Bars](img/dusk.png)
+![Ocean Bars](img/ocean.png)
+![Ember Bars](img/ember.png)
+![Mono Bars](img/mono.png)
+![Synth Bars](img/synth.png)
+![Citrus Bars](img/citrus.png)
+![Lagoon Bars](img/lagoon.png)
+![Solaris Bars](img/solaris.png)
+![Tropic Bars](img/tropic.png)
+![Dusk Wave](img/dusk_wave.png)
