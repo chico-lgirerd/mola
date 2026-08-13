@@ -24,6 +24,9 @@ If you see some FUSE errors when launching the appimage :
 ./Mola-x86_64.AppImage --appimage-extract-and-run
 ```
 
+You can also double-click the AppImage in a file explorer to launch it
+This will also avoid taking up a terminal 
+
 # Prerequisites - building from source
 
 ### With root access
@@ -49,13 +52,16 @@ make
 
 ## Command line flags
 
+These also work with the AppImage !
+
 ```
 -d, --device NAME      pulse source to grab (default: auto, monitor of your default sink)
--b, --bars N           how many bars (default: 56)
--s, --sensitivity F    gain on bar height (default: 1.0 -- turn up if bars stay short)
+-b, --bars N           how many bars (default: 100)
+-s, --sensitivity F    gain on bar height (default: 0.5 -- turn up if bars stay short)
 -g, --gradient NAME    color gradient, by name or index (default: dusk)
                         options: dusk, ocean, ember, mono, synth, citrus,
                         lagoon, solaris, tropic
+-f, --font PATH        .ttf to draw the top-right label (default: Montserrat SemiBold)"
     --fps N            target frame rate (default: 60)
     --list-devices     print pulse sources and exit
 -h, --help             print usage and exit

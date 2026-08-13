@@ -12,8 +12,9 @@
 #include "fft.h"
 #include "render.h"
 
-#define DEFAULT_FONT_PATH "/home/lgirerd/.local/usr/share/fonts/Montserrat/static/Montserrat-SemiBold.ttf"
+#define DEFAULT_FONT_PATH "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf"
 #define DEFAULT_FONT_SIZE 16
+#define BUNDLED_FONT_NAME "Montserrat-SemiBold.ttf"
 
 #define DEFAULT_SAMPLE_RATE 44100
 #define FFT_SIZE 4096
@@ -72,7 +73,7 @@ static void print_usage(const char *prog)
     {
         printf("%s%s", i == 0 ? "" : ", ", render_gradient_name(i));
     }
-    printf("   -f, --font PATH      .ttf to draw the top-right label (default: %s)\n", DEFAULT_FONT_PATH);
+    printf("\n  -f, --font PATH      .ttf to draw the top-right label (default: %s)\n", DEFAULT_FONT_PATH);
     printf("\n");
     printf("      --fps N           target frame rate (default: %d)\n", DEFAULT_FPS);
     printf("      --list-devices    print pulse sources and exit\n");
@@ -81,14 +82,34 @@ static void print_usage(const char *prog)
     printf("Top-right corner shows the current gradient name -- font missing just means no label, nothing else breaks.\n");
 }
 
+static int load_best_font(TTF_Font **font, const char *user_path)
+{
+    if (user_path)
+    {
+        return (render_font_load(font, user_path, DEFAULT_FONT_SIZE));
+    }
+
+    const char *appdir = getenv("APPDIR"); // only when launching AppImage
+    if (appdir)
+    {
+        char bundled[512];
+        snprintf(bundled, sizeof(bundled), "%s/usr/share/fonts/mola/%s", appdir, BUNDLED_FONT_NAME);
+        if (render_font_load(font, bundled, DEFAULT_FONT_SIZE) == 0)
+            return (0);
+    }
+
+    return (render_font_load(font, DEFAULT_FONT_PATH, DEFAULT_FONT_SIZE));
+}
+
 int main(int argc, char **argv)
 {
     const char *device = NULL;
     int num_bars = DEFAULT_NUM_BARS;
-    float sensitivity = 1.0f;
+    float sensitivity = 0.05f;
     int target_fps = DEFAULT_FPS;
     int gradient = 0;
     const char *font_path = DEFAULT_FONT_PATH;
+    int font_from_user = 0;
 
     for (int i = 1; i < argc; i++)
     {
@@ -132,6 +153,7 @@ int main(int argc, char **argv)
         else if ((strcmp(argv[i], "-f") == 0 || strcmp(argv[i], "--font") == 0) && i + 1 < argc)
         {
             font_path = argv[++i];
+            font_from_user = 1;
         }
         else
         {
@@ -186,14 +208,14 @@ int main(int argc, char **argv)
     }
     cap_started = 1;
 
-    if (render_init(&win, &ren, 1000, 500, "Audio Visualizer") != 0)
+    if (render_init(&win, &ren, 1000, 500, "Mola") != 0)
     {
         exit_code = 1;
         goto cleanup;
     }
     sdl_started = 1;
 
-    if (render_font_load(&font, font_path, DEFAULT_FONT_SIZE) == 0)
+    if (load_best_font(&font, font_from_user ? font_path : NULL) == 0)
     {
         font_ready = 1;
     }
