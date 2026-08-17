@@ -90,7 +90,7 @@ static void *capture_thread_main(void *arg)
     return NULL;
 }
 
-int audio_capture_start(AudioCapture *cap, const char *device, int sample_rate)
+int audio_capture_start(AudioCapture *cap, const char *device, int sample_rate, int window_size)
 {
     char auto_device[256];
     const char *use_device = device;
@@ -123,6 +123,11 @@ int audio_capture_start(AudioCapture *cap, const char *device, int sample_rate)
 
     cap->sample_rate = sample_rate;
     cap->ring_capacity = READ_CHUNK_FRAMES * RING_SLACK;
+    /* the ring must hold at least one full FFT window, or get_window
+     * silently returns a truncated window and the caller's FFT reads
+     * uninitialized samples past it */
+    if (window_size > cap->ring_capacity)
+        cap->ring_capacity = window_size;
     cap->ring = calloc((size_t)cap->ring_capacity, sizeof(float));
     if (!cap->ring)
     {

@@ -23,7 +23,7 @@ typedef struct
 int audio_find_default_monitor(char *out, size_t outsz);
 void audio_print_sources(void);
 
-int audio_capture_start(AudioCapture *cap, const char *device, int sample_rate);
+int audio_capture_start(AudioCapture *cap, const char *device, int sample_rate, int window_size);
 
 void audio_capture_get_window(AudioCapture *cap, float *out, int n);
 

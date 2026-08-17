@@ -199,7 +199,7 @@ int main(int argc, char **argv)
     Complex *spectrum = NULL;
     float *magnitudes = NULL;
 
-    if (audio_capture_start(&cap, device, DEFAULT_SAMPLE_RATE) != 0)
+    if (audio_capture_start(&cap, device, DEFAULT_SAMPLE_RATE, FFT_SIZE) != 0)
     {
         fprintf(stderr, "could not grab sound from pulse/pipewire. is a sound server awake?\n");
         fprintf(stderr, "try --list-devices to see sources, or --device NAME to pick one by hand.\n");

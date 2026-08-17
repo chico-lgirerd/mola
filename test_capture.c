@@ -18,7 +18,7 @@ int main(void) {
     AudioCapture cap;
     memset(&cap, 0, sizeof(cap));
 
-    if (audio_capture_start(&cap, NULL, 44100) != 0) {
+    if (audio_capture_start(&cap, NULL, 44100, FFT_SIZE) != 0) {
         fprintf(stderr, "capture start failed\n");
         return 1;
     }
