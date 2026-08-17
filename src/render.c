@@ -149,6 +149,160 @@ void render_draw_waveform(SDL_Renderer *ren, const float *samples, int count, in
     }
 }
 
+void render_draw_bezier(SDL_Renderer *ren, const float *values, int count, int win_w, int win_h, int gradient)
+{
+    const Gradient *grad = gradient_lookup(gradient);
+
+    SDL_SetRenderDrawColor(ren, 8, 8, 14, 255);
+    SDL_RenderClear(ren);
+
+    if (count < 2 || win_w <= 0)
+        return;
+
+    float *ctrl_x = malloc(sizeof(float) * (size_t)count);
+    float *ctrl_y = malloc(sizeof(float) * (size_t)count);
+    if (!ctrl_x || !ctrl_y)
+    {
+        free(ctrl_x);
+        free(ctrl_y);
+        return;
+    }
+
+    for (int i = 0; i < count; i++)
+    {
+        float v = values[i];
+        if (v < 0.0f)
+            v = 0.0f;
+        if (v > 1.0f)
+            v = 1.0f;
+        ctrl_x[i] = (count > 1) ? (float)i * (float)(win_w - 1) / (float)(count - 1) : 0.0f;
+        ctrl_y[i] = (float)win_h - v * (float)win_h * 0.9f;
+    }
+
+    float *smooth_y = malloc(sizeof(float) * (size_t)count);
+    if (!smooth_y)
+    {
+        free(ctrl_x);
+        free(ctrl_y);
+        return;
+    }
+
+    static const float kernel[7] = {0.05f, 0.1f, 0.2f, 0.3f, 0.2f, 0.1f, 0.05f};
+    for (int i = 0; i < count; i++)
+    {
+        float sum = 0.0f;
+        for (int k = -3; k <= 3; k++)
+        {
+            int idx = i + k;
+            if (idx < 0)
+                idx = 0;
+            if (idx >= count)
+                idx = count - 1;
+            sum += ctrl_y[idx] * kernel[k + 3];
+        }
+        smooth_y[i] = sum;
+    }
+    memcpy(ctrl_y, smooth_y, sizeof(float) * (size_t)count);
+    free(smooth_y);
+
+    int max_pts = 2 + (count - 1) * 80;
+    float *px_arr = malloc(sizeof(float) * (size_t)max_pts);
+    float *py_arr = malloc(sizeof(float) * (size_t)max_pts);
+    float *curve_y = malloc(sizeof(float) * (size_t)win_w);
+    if (!px_arr || !py_arr || !curve_y)
+    {
+        free(ctrl_x);
+        free(ctrl_y);
+        free(px_arr);
+        free(py_arr);
+        free(curve_y);
+        return;
+    }
+
+    int npts = 0;
+    px_arr[npts] = ctrl_x[0];
+    py_arr[npts] = ctrl_y[0];
+    npts++;
+
+    for (int i = 0; i < count - 1; i++)
+    {
+        float p0x = (i == 0) ? ctrl_x[0] : ctrl_x[i - 1];
+        float p0y = (i == 0) ? ctrl_y[0] : ctrl_y[i - 1];
+        float p1x = ctrl_x[i], p1y = ctrl_y[i];
+        float p2x = ctrl_x[i + 1], p2y = ctrl_y[i + 1];
+        float p3x = (i + 2 < count) ? ctrl_x[i + 2] : ctrl_x[count - 1];
+        float p3y = (i + 2 < count) ? ctrl_y[i + 2] : ctrl_y[count - 1];
+
+        float c1x, c1y, c2x, c2y;
+        catmull_to_bezier(p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y, &c1x, &c1y, &c2x, &c2y);
+
+        int seg_px = (int)(p2x - p1x);
+        int steps = seg_px / 3;
+        if (steps < 8)
+            steps = 8;
+        if (steps > 80)
+            steps = 80;
+
+        for (int s = 1; s <= steps && npts < max_pts; s++)
+        {
+            float t = (float)s / (float)steps;
+            float x, y;
+            bezier_eval(p1x, p1y, c1x, c1y, c2x, c2y, p2x, p2y, t, &x, &y);
+            px_arr[npts] = x;
+            py_arr[npts] = y;
+            npts++;
+        }
+    }
+
+    int j = 0;
+    for (int x = 0; x < win_w; x++)
+    {
+        float fx = (float)x;
+        while (j + 1 < npts - 1 && px_arr[j + 1] < fx)
+            j++;
+
+        float x0 = px_arr[j], y0 = py_arr[j];
+        float x1 = px_arr[j + 1], y1 = py_arr[j + 1];
+
+        if (fx <= x0)
+            curve_y[x] = y0;
+        else if (fx >= x1)
+            curve_y[x] = y1;
+        else
+            curve_y[x] = y0 + (y1 - y0) * (fx - x0) / (x1 - x0);
+    }
+
+    SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
+
+    for (int x = 0; x < win_w; x++)
+    {
+        float y = curve_y[x];
+        float v = ((float)win_h - y) / ((float)win_h * 0.9f);
+        Uint8 r, g, b;
+        lerp_color(&r, &g, &b, grad, v);
+        SDL_SetRenderDrawColor(ren, r, g, b, 90);
+        SDL_RenderDrawLine(ren, x, (int)y, x, win_h);
+    }
+
+    for (int x = 1; x < win_w; x++)
+    {
+        float v = ((float)win_h - curve_y[x]) / ((float)win_h * 0.9f);
+        Uint8 r, g, b;
+        lerp_color(&r, &g, &b, grad, v);
+        SDL_SetRenderDrawColor(ren, r, g, b, 255);
+        SDL_RenderDrawLine(ren, x - 1, (int)curve_y[x - 1], x, (int)curve_y[x]);
+        SDL_RenderDrawLine(ren, x - 1, (int)curve_y[x - 1] + 1, x, (int)curve_y[x] + 1);
+    }
+
+    SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_NONE);
+
+    free(ctrl_x);
+    free(ctrl_y);
+    free(px_arr);
+    free(py_arr);
+    free(curve_y);
+}
+
 int render_font_load(TTF_Font **font, const char *path, int pt_size)
 {
     if (TTF_Init() != 0)

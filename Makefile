@@ -3,7 +3,7 @@ PKGS    := sdl2 SDL2_ttf libpulse-simple libpulse
 CFLAGS  := -O2 -Wall -Wextra -std=c11 $(shell pkg-config --cflags $(PKGS)) -pthread
 LDFLAGS := $(shell pkg-config --libs $(PKGS)) -lm -pthread
 
-SRC := src/main.c src/audio.c src/fft.c src/bars.c src/render.c
+SRC := src/main.c src/audio.c src/fft.c src/bars.c src/render.c src/bezier.c
 OBJ := $(SRC:.c=.o)
 BIN := mola
 

@@ -7,7 +7,8 @@
 typedef enum
 {
     VIS_MODE_BARS = 0,
-    VIS_MODE_WAVE = 1
+    VIS_MODE_WAVE = 1,
+    VIS_MODE_BEZIER = 2
 } VisMode;
 
 typedef struct
@@ -32,6 +33,16 @@ void render_draw_bars(SDL_Renderer *ren, const float *values, int count, int win
 /* samples are raw (unwindowed) mono audio in roughly [-1,1]. line color
  * comes from the gradient's high-end color, so waveform matches bars. */
 void render_draw_waveform(SDL_Renderer *ren, const float *samples, int count, int win_w, int win_h, int gradient);
+
+void catmull_to_bezier(float p0x, float p0y, float p1x, float p1y,
+                              float p2x, float p2y, float p3x, float p3y,
+                              float *c1x, float *c1y, float *c2x, float *c2y);
+
+void bezier_eval(float p0x, float p0y, float c1x, float c1y,
+                        float c2x, float c2y, float p1x, float p1y,
+                        float t, float *outx, float *outy);
+
+void render_draw_bezier(SDL_Renderer *ren, const float *values, int count, int win_w, int win_h, int gradient);
 
 int render_font_load(TTF_Font **font, const char *path, int pt_size);
 void render_font_free(TTF_Font *font);

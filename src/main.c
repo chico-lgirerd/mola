@@ -66,7 +66,7 @@ static void print_usage(const char *prog)
     printf("Usage: %s [OPTIONS]\n\n", prog);
     printf("  -d, --device NAME     pulse source to grab (default: auto monitor of default sink)\n");
     printf("  -b, --bars N          how many bars to draw (default: %d)\n", DEFAULT_NUM_BARS);
-    printf("  -s, --sensitivity F   gain multiplier on bar height (default: 1.0)\n");
+    printf("  -s, --sensitivity F   gain multiplier on bar height (default: 0.05)\n");
     printf("  -g, --gradient NAME   color gradient, name or index (default: %s) -- options: ",
            render_gradient_name(0));
     for (int i = 0; i < render_gradient_count(); i++)
@@ -78,7 +78,7 @@ static void print_usage(const char *prog)
     printf("      --fps N           target frame rate (default: %d)\n", DEFAULT_FPS);
     printf("      --list-devices    print pulse sources and exit\n");
     printf("  -h, --help            print this and exit\n\n");
-    printf("Keys while running: SPACE toggle bars/waveform, G cycle gradient, ESC or q quit.\n");
+    printf("Keys while running: SPACE cycle bars/waveform/bezier wave, G cycle gradient, ESC or q quit.\n");
     printf("Top-right corner shows the current gradient name -- font missing just means no label, nothing else breaks.\n");
 }
 
@@ -277,7 +277,9 @@ int main(int argc, char **argv)
                     }
                     else if (k == SDLK_SPACE)
                     {
-                        mode = (mode == VIS_MODE_BARS) ? VIS_MODE_WAVE : VIS_MODE_BARS;
+                        mode = (mode == VIS_MODE_BARS)   ? VIS_MODE_WAVE
+                               : (mode == VIS_MODE_WAVE) ? VIS_MODE_BEZIER
+                                                         : VIS_MODE_BARS;
                     }
                     else if (k == SDLK_g)
                     {
@@ -308,9 +310,13 @@ int main(int argc, char **argv)
             {
                 render_draw_bars(ren, bars.smoothed, bars.count, win_w, win_h, gradient);
             }
-            else
+            else if (mode == VIS_MODE_WAVE)
             {
                 render_draw_waveform(ren, samples, FFT_SIZE, win_w, win_h, gradient);
+            }
+            else
+            {
+                render_draw_bezier(ren, bars.smoothed, bars.count, win_w, win_h, gradient);
             }
 
             if (font_ready)

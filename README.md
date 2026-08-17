@@ -26,6 +26,8 @@ If you see some FUSE errors when launching the appimage :
 ./Mola-x86_64.AppImage --appimage-extract-and-run
 ```
 
+Flags **ARE** taken by the appimage arguments 
+
 You can also double-click the AppImage in a file explorer to launch it
 This will also avoid taking up a terminal 
 
@@ -59,7 +61,7 @@ These also work with the AppImage !
 ```
 -d, --device NAME      pulse source to grab (default: auto, monitor of your default sink)
 -b, --bars N           how many bars (default: 100)
--s, --sensitivity F    gain on bar height (default: 0.5 -- turn up if bars stay short)
+-s, --sensitivity F    gain on bar height (default: 0.05 -- turn up if bars stay short)
 -g, --gradient NAME    color gradient, by name or index (default: dusk)
                         options: dusk, ocean, ember, mono, synth, citrus,
                         lagoon, solaris, tropic
@@ -71,7 +73,7 @@ These also work with the AppImage !
 
 ## While running
 
-Press `SPACE` to swap between bars and wave form
+Press `SPACE` to cycle between bars, wave form, and bezier wave
 Press `G` to cycle through gradients
 PRESS `ESC` or `Q` to exit
 

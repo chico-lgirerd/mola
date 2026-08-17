@@ -23,6 +23,8 @@ int bars_init(BarMapper *bm, int num_bars, int fft_size, int sample_rate,
     float log_min = logf(min_freq);
     float log_max = logf(max_freq);
 
+    int next_free_bin = 1;
+
     for (int i = 0; i < num_bars; i++)
     {
         float f_lo = expf(log_min + (log_max - log_min) * (float)i / (float)num_bars);
@@ -31,20 +33,20 @@ int bars_init(BarMapper *bm, int num_bars, int fft_size, int sample_rate,
         int bin_lo = (int)(f_lo / bin_hz + 0.5f);
         int bin_hi = (int)(f_hi / bin_hz + 0.5f);
 
-        if (bin_lo < 1)
-            bin_lo = 1;
-        if (bin_hi > max_bin)
-            bin_hi = max_bin;
+        if (bin_lo < next_free_bin)
+            bin_lo = next_free_bin;
         if (bin_hi <= bin_lo)
             bin_hi = bin_lo + 1;
-        if (bin_hi > max_bin)
-        { // avoid going above top of the window
+        if (bin_hi > max_bin) // avoid going above top of the window
             bin_hi = max_bin;
+        if (bin_lo >= max_bin)
             bin_lo = max_bin - 1;
-        }
+        if (bin_hi <= bin_lo)
+            bin_hi = bin_lo + 1;
 
         bm->ranges[i].bin_lo = bin_lo;
         bm->ranges[i].bin_hi = bin_hi;
+        next_free_bin = bin_hi;
     }
     return 0;
 }
