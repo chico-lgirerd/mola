@@ -17,7 +17,7 @@
 #define BUNDLED_FONT_NAME "Montserrat-SemiBold.ttf"
 
 #define DEFAULT_SAMPLE_RATE 44100
-#define FFT_SIZE 4096
+#define FFT_SIZE 16384
 #define DEFAULT_NUM_BARS 100
 #define DEFAULT_FPS 60
 #define MIN_FREQ 40.0f
