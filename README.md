@@ -93,3 +93,4 @@ Icon : Designed by rawpixel.com / Freepik
 ![Solaris Bars](img/solaris.png)
 ![Tropic Bars](img/tropic.png)
 ![Dusk Wave](img/dusk_wave.png)
+![Dusk Curvew](img/bezier_dusk.png)
