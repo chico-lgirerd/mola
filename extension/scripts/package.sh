@@ -11,7 +11,7 @@ echo "==> node --test"
 node --test tests/*.test.js
 
 echo "==> web-ext lint"
-npx --yes web-ext@8 lint --source-dir .
+npx --yes web-ext@8 lint --source-dir . --ignore-files "${IGNORE_FILES[@]}"
 
 echo "==> web-ext build"
 npx --yes web-ext@8 build --source-dir . --artifacts-dir dist --overwrite-dest \

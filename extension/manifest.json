@@ -6,10 +6,17 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "mola-zigzag@chico-lgirerd.github.io",
-      "strict_min_version": "115.0"
+      "strict_min_version": "115.0",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
     }
   },
-  "permissions": ["storage"],
+  "permissions": [
+    "storage"
+  ],
   "action": {
     "default_popup": "popup/popup.html",
     "default_title": "Mola",
@@ -24,14 +31,24 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://www.youtube.com/embed/*"],
-      "js": ["lib/mola-core.js", "content/youtube-tap.js"],
+      "matches": [
+        "https://www.youtube.com/embed/*"
+      ],
+      "js": [
+        "lib/mola-core.js",
+        "content/youtube-tap.js"
+      ],
       "all_frames": true,
       "run_at": "document_idle"
     },
     {
-      "matches": ["https://www.zig-zag.fm/*"],
-      "js": ["lib/mola-core.js", "content/zigzag-viz.js"],
+      "matches": [
+        "https://www.zig-zag.fm/*"
+      ],
+      "js": [
+        "lib/mola-core.js",
+        "content/zigzag-viz.js"
+      ],
       "all_frames": false,
       "run_at": "document_idle"
     }
