@@ -13,6 +13,11 @@
   const Core = globalThis.MolaCore;
   if (!Core) return;
 
+  // After an add-on reload, the previous instance's DOM is left behind in the page
+  // with dead handlers (can't move or close). Remove it before building ours.
+  const MARK = 'data-mola-viz';
+  for (const el of document.querySelectorAll('[' + MARK + ']')) el.remove();
+
   const api = globalThis.browser ?? globalThis.chrome;
   const YT_ORIGIN = 'https://www.youtube.com';
   const STALE_MS = 1000;
@@ -134,6 +139,7 @@
   function createHost() {
     if (host) return;
     host = document.createElement('div');
+    host.setAttribute(MARK, 'window');
     host.style.cssText =
       'position:fixed;z-index:40;margin:0;padding:0;border:0;display:block;';
     shadow = host.attachShadow({ mode: 'closed' });
@@ -255,6 +261,7 @@
   function createToggle() {
     if (toggleHost) return;
     toggleHost = document.createElement('div');
+    toggleHost.setAttribute(MARK, 'toggle');
     toggleHost.style.cssText =
       'position:fixed;z-index:40;margin:0;padding:0;border:0;right:12px;top:56px;' +
       'width:' + TOGGLE + 'px;height:' + TOGGLE + 'px;';

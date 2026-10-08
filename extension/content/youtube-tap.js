@@ -132,22 +132,28 @@
         // playing through its own output, so engaging/disengaging the tap (e.g. when
         // the add-on reloads) never changes what you hear. The analyser is then a
         // dead end. Fallback: reroute the element through the graph.
-        const capture = video.captureStream || video.mozCaptureStream;
-        const viaCapture = typeof capture === 'function';
         if (!analyser) {
           analyser = ctx.createAnalyser();
           analyser.fftSize = FFT_SIZE;
           analyser.smoothingTimeConstant = 0;
-          if (!viaCapture) analyser.connect(ctx.destination);
           spec = new Float32Array(FFT_SIZE / 2);
           time = new Float32Array(FFT_SIZE);
         }
-        let src;
-        if (viaCapture) {
-          src = tapCaptured(video, capture);
-        } else {
+        const capture = video.captureStream || video.mozCaptureStream;
+        let src = null;
+        let viaCapture = false;
+        if (typeof capture === 'function') {
+          try {
+            src = tapCaptured(video, capture);
+            viaCapture = true;
+          } catch (e) {
+            console.warn('mola: captureStream failed, falling back to reroute', e && e.name, e && e.message);
+          }
+        }
+        if (!viaCapture) {
           src = ctx.createMediaElementSource(video);
           src.connect(analyser);
+          analyser.connect(ctx.destination);
         }
         sources.set(video, src);
         // Diagnostics for level changes when the tap engages (see README).
@@ -161,7 +167,7 @@
         });
       } catch (e) {
         failed.add(video);
-        console.debug('mola: createMediaElementSource failed', e && e.name);
+        console.warn('mola: audio tap failed', e && e.name, e && e.message);
         return;
       }
     } finally {
