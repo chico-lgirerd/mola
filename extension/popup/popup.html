@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Mola</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main>
+    <h1>Mola</h1>
+
+    <label class="row toggle" for="enabled">
+      <span>Enable visualizer</span>
+      <input type="checkbox" id="enabled">
+    </label>
+
+    <div class="field">
+      <label for="mode">Mode</label>
+      <select id="mode"></select>
+    </div>
+
+    <div class="field" role="group" aria-labelledby="gradient-label">
+      <span id="gradient-label" class="label">Gradient</span>
+      <div id="gradient" class="gradients" role="radiogroup" aria-labelledby="gradient-label"></div>
+    </div>
+
+    <div class="field">
+      <div class="row">
+        <label for="bars">Bar count</label>
+        <output id="bars-out" for="bars"></output>
+      </div>
+      <input type="range" id="bars" min="8" max="256" step="1">
+    </div>
+
+    <div class="field">
+      <div class="row">
+        <label for="sensitivity">Sensitivity</label>
+        <output id="sensitivity-out" for="sensitivity"></output>
+      </div>
+      <input type="range" id="sensitivity" min="0" max="1000" step="1">
+    </div>
+
+    <div class="field">
+      <label for="mount">Position</label>
+      <select id="mount"></select>
+    </div>
+
+    <button type="button" id="reset">Reset to defaults</button>
+  </main>
+  <script src="../lib/mola-core.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
