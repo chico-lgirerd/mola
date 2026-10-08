@@ -121,6 +121,14 @@
         }
         src.connect(analyser);
         sources.set(video, src);
+        // Diagnostics for level changes when the tap engages (see README).
+        console.info('mola: tap connected', {
+          volume: video.volume, muted: video.muted, t: video.currentTime,
+          ctxRate: ctx.sampleRate, ctxState: ctx.state,
+        });
+        video.addEventListener('volumechange', () => {
+          console.info('mola: volumechange', { volume: video.volume, muted: video.muted });
+        });
       } catch (e) {
         failed.add(video);
         console.debug('mola: createMediaElementSource failed', e && e.name);

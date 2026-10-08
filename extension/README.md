@@ -126,3 +126,11 @@ Not verified (no access to the live logged-in site or a browser session):
   the page reloads; disabling only stops the analysis/posting.
 - The YouTube iframe selector (`iframe#youtube-player`) depends on zig-zag.fm's
   current markup; the floating window itself does not depend on the site layout.
+
+## Debugging level changes
+
+When the tap hooks up a video it logs `mola: tap connected` (video volume, muted,
+position, AudioContext rate/state) and any later `mola: volumechange`. To read
+them: `about:debugging` -> This Firefox -> Inspect the add-on is not enough (the
+script runs in the page's YouTube frame); open the page console on zig-zag.fm and
+pick the `youtube.com/embed` frame in the frame selector, filter on `mola:`.
