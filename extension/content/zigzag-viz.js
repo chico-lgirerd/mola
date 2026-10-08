@@ -247,6 +247,58 @@
     draw();
   }
 
+  // ---- toggle button (sits under the site's Notifications button) ----
+  const NOTIF_SEL = 'button[aria-label="Notifications"]';
+  const TOGGLE = 30;
+  let toggleHost = null, toggleBtn = null;
+
+  function createToggle() {
+    if (toggleHost) return;
+    toggleHost = document.createElement('div');
+    toggleHost.style.cssText =
+      'position:fixed;z-index:40;margin:0;padding:0;border:0;right:12px;top:56px;' +
+      'width:' + TOGGLE + 'px;height:' + TOGGLE + 'px;';
+    const sh = toggleHost.attachShadow({ mode: 'closed' });
+    sh.appendChild(styleEl(
+      ':host{all:initial}' +
+      'button{all:unset;box-sizing:border-box;width:100%;height:100%;display:flex;align-items:center;' +
+      'justify-content:center;cursor:pointer;opacity:.6;transition:opacity .15s}' +
+      'button:hover,button:focus-visible,button[aria-pressed=true]{opacity:1}' +
+      'svg{width:18px;height:18px;fill:#fff}'
+    ));
+    toggleBtn = makeButton('Toggle visualizer');
+    toggleBtn.title = 'Visualizer';
+    toggleBtn.innerHTML =
+      '<svg viewBox="0 0 18 18" aria-hidden="true">' +
+      '<rect x="1" y="9" width="2.5" height="8"/><rect x="5" y="3" width="2.5" height="14"/>' +
+      '<rect x="9" y="6" width="2.5" height="11"/><rect x="13" y="1" width="2.5" height="16"/></svg>';
+    toggleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      persist({ enabled: !settings.enabled });
+    });
+    sh.appendChild(toggleBtn);
+    (document.body || document.documentElement).appendChild(toggleHost);
+    updateToggle();
+    positionToggle();
+    setInterval(positionToggle, 500);
+  }
+
+  function updateToggle() {
+    if (toggleBtn) toggleBtn.setAttribute('aria-pressed', String(!!settings.enabled));
+  }
+
+  // Align to the Notifications button's right edge, just below it. If the site
+  // markup changes and it is not found, the fixed top-right fallback is kept.
+  function positionToggle() {
+    if (!toggleHost) return;
+    const n = document.querySelector(NOTIF_SEL);
+    const r = n && n.getBoundingClientRect();
+    if (!r || !r.width) return;
+    toggleHost.style.right = 'auto';
+    toggleHost.style.left = Math.round(r.right - TOGGLE) + 'px';
+    toggleHost.style.top = Math.round(r.bottom + 6) + 'px';
+  }
+
   // ---- settings ----
   async function persist(patch) {
     const stored = await storageGet();
@@ -258,6 +310,7 @@
 
   function applySettings(next) {
     settings = Core.sanitizeSettings(next);
+    updateToggle();
     if (!settings.enabled) {
       cancelAnimationFrame(rafId);
       rafId = 0;
@@ -414,7 +467,9 @@
   window.addEventListener('resize', () => {
     if (win) win = clampWin(win);
     applyGeometry();
+    positionToggle();
   });
+  createToggle();
 
   try {
     api.storage.onChanged.addListener((changes, area) => {

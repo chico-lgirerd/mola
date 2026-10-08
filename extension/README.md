@@ -39,6 +39,9 @@ Open the popup from the toolbar icon:
 - sensitivity
 - (the window position and size are remembered automatically)
 
+A small bars button sits under the site's Notifications button (top-right of the map)
+and opens / closes the visualizer window, same as the popup's **Enable** toggle.
+
 The mode and gradient can also be changed with the small buttons in the visualizer
 window's title bar. Keyboard shortcuts are intentionally not used, so they never clash with the
 site's own shortcuts.
