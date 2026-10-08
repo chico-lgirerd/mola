@@ -86,6 +86,24 @@
     });
   }
 
+  // Feed the analyser from video.captureStream(). The captured stream's audio
+  // tracks come and go (new MSE source on every track change), so re-attach on
+  // each addtrack. No audio track yet just means no viz yet; playback is untouched.
+  function tapCaptured(video, capture) {
+    const stream = capture.call(video);
+    let node = null;
+    const attach = () => {
+      const tracks = stream.getAudioTracks().filter((t) => t.readyState === 'live');
+      if (!tracks.length) return;
+      if (node) { try { node.disconnect(); } catch (e) { /* already gone */ } }
+      node = ctx.createMediaStreamSource(new MediaStream(tracks));
+      node.connect(analyser);
+    };
+    stream.addEventListener('addtrack', attach);
+    attach();
+    return stream;
+  }
+
   // Create the context / source only when the context is truly running:
   // routing a media element through a suspended context mutes it.
   async function connect(video) {
@@ -110,20 +128,32 @@
       if (ctx.state !== 'running') return; // retry on next play / pointerdown / keydown
       if (!enabled || sources.has(video)) return;
       try {
-        const src = ctx.createMediaElementSource(video);
+        // Preferred: tap a captured copy of the element's audio. The element keeps
+        // playing through its own output, so engaging/disengaging the tap (e.g. when
+        // the add-on reloads) never changes what you hear. The analyser is then a
+        // dead end. Fallback: reroute the element through the graph.
+        const capture = video.captureStream || video.mozCaptureStream;
+        const viaCapture = typeof capture === 'function';
         if (!analyser) {
           analyser = ctx.createAnalyser();
           analyser.fftSize = FFT_SIZE;
           analyser.smoothingTimeConstant = 0;
-          analyser.connect(ctx.destination);
+          if (!viaCapture) analyser.connect(ctx.destination);
           spec = new Float32Array(FFT_SIZE / 2);
           time = new Float32Array(FFT_SIZE);
         }
-        src.connect(analyser);
+        let src;
+        if (viaCapture) {
+          src = tapCaptured(video, capture);
+        } else {
+          src = ctx.createMediaElementSource(video);
+          src.connect(analyser);
+        }
         sources.set(video, src);
         // Diagnostics for level changes when the tap engages (see README).
         console.info('mola: tap connected', {
           volume: video.volume, muted: video.muted, t: video.currentTime,
+          via: viaCapture ? 'captureStream' : 'mediaElementSource',
           ctxRate: ctx.sampleRate, ctxState: ctx.state,
         });
         video.addEventListener('volumechange', () => {
