@@ -218,8 +218,8 @@ test('sanitizeSettings', () => {
   assert.deepEqual(C.sanitizeSettings(null), C.DEFAULTS);
   assert.deepEqual(C.sanitizeSettings('x'), C.DEFAULTS);
   assert.deepEqual(C.sanitizeSettings({}), C.DEFAULTS);
-  const s = C.sanitizeSettings({ enabled: false, mode: 'wave', gradient: 'OCEAN', bars: 64.4, sensitivity: 0.2, mount: 'top', junk: 1 });
-  assert.deepEqual(s, { enabled: false, mode: 'wave', gradient: 'ocean', bars: 64, sensitivity: 0.2, mount: 'top' });
+  const s = C.sanitizeSettings({ enabled: false, mode: 'wave', gradient: 'OCEAN', bars: 64.4, sensitivity: 0.2, junk: 1 });
+  assert.deepEqual(s, { enabled: false, mode: 'wave', gradient: 'ocean', bars: 64, sensitivity: 0.2 });
   assert.equal(C.sanitizeSettings({ bars: 1 }).bars, 8);
   assert.equal(C.sanitizeSettings({ bars: 9999 }).bars, 256);
   assert.equal(C.sanitizeSettings({ bars: NaN }).bars, 100);
@@ -233,7 +233,6 @@ test('sanitizeSettings', () => {
   assert.equal(C.sanitizeSettings({ gradient: 2 }).gradient, 'ember');
   assert.equal(C.sanitizeSettings({ gradient: 'zzz' }).gradient, 'dusk');
   assert.equal(C.sanitizeSettings({ mode: 'x' }).mode, 'bars');
-  assert.equal(C.sanitizeSettings({ mount: 'y' }).mount, 'above-bar');
   assert.equal(C.sanitizeSettings({ enabled: 'no' }).enabled, true);
   const d = C.sanitizeSettings({});
   d.bars = 1;

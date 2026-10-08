@@ -37,10 +37,10 @@ Open the popup from the toolbar icon:
 - gradient
 - bar count
 - sensitivity
-- mount position
+- (the window position and size are remembered automatically)
 
-The mode and gradient can also be changed with the small buttons on the visualizer
-strip. Keyboard shortcuts are intentionally not used, so they never clash with the
+The mode and gradient can also be changed with the small buttons in the visualizer
+window's title bar. Keyboard shortcuts are intentionally not used, so they never clash with the
 site's own shortcuts.
 
 ## Development
@@ -78,20 +78,23 @@ Firefox (main target):
    access to `www.zig-zag.fm` and `www.youtube.com` is on (or use the toolbar
    extensions button on zig-zag.fm and choose "Always allow").
 3. Open https://www.zig-zag.fm, log in, start a track.
-   - Expected: a 72 px strip appears directly above the bottom player bar within a
-     second of playback, bars moving with the music. Audio keeps playing normally.
-4. Pause: the strip disappears after ~1 s. Resume: it comes back.
-5. Click the two small buttons at the top-right of the strip: the first cycles
+   - Expected: a black floating window (like the island / artist windows) titled
+     "visualizer" appears near the bottom centre; bars move with the music. Audio
+     keeps playing normally.
+4. Pause: the bars fall to empty after ~1 s (the window stays). Resume: they return.
+   Drag the title bar to move the window, drag the bottom-right grip to resize it;
+   reload the page: position and size are remembered.
+5. Click the two small buttons in the title bar: the first cycles
    bars -> wave -> bezier, the second cycles the 9 gradients. The site must not react
    (no play/pause, no navigation). Keyboard shortcuts of the site (e.g. Space) must
    behave exactly as without the extension.
 6. Open the popup: change mode, gradient, bar count (try 8 and 256), sensitivity,
-   position (above bar / bottom / top). Each change applies live on the open tab.
-   Toggle **Enable** off: the strip disappears; audio must keep playing.
+   Each change applies live on the open tab. Toggle **Enable** off (or click the
+   window's x): the window disappears; audio must keep playing.
 7. Skip to the next track, and seek with the slider: viz keeps working.
-8. Resize the window / zoom (Ctrl +/-): strip stays full-width and above the bar.
+8. Resize the browser window / zoom (Ctrl +/-): the floating window stays inside the viewport.
 9. Set the OS / `ui.prefersReducedMotion=1` (about:config) reduced-motion preference:
-   the strip updates at ~10 fps.
+   the window updates at ~10 fps.
 10. Debug: in `about:debugging` -> Inspect the add-on, or the page console filtered on
     `mola:`. In the page console, `window.addEventListener('message', e =>
     e.data?.type === 'zz-viz' && console.log(e.data.kind))` shows whether frames
@@ -108,8 +111,8 @@ spectrum path), `web-ext lint` (0 errors / 0 warnings) and `web-ext build`.
 Not verified (no access to the live logged-in site or a browser session):
 
 - The whole runtime path: audio tap in the YouTube frame, `postMessage` delivery,
-  `event.source` matching in Firefox (Xray wrappers), canvas rendering, mount position
-  above the bottom bar, the on-strip buttons, popup UI.
+  `event.source` matching in Firefox (Xray wrappers), canvas rendering, the floating window (drag, resize, close)
+  above the bottom bar, the title-bar buttons, popup UI.
 - Autoplay policy: the tap only connects the `<video>` once its `AudioContext` is
   `running` (connecting through a suspended context would mute the video). If the
   browser refuses to start the context in the cross-origin frame, there is no viz
@@ -118,6 +121,5 @@ Not verified (no access to the live logged-in site or a browser session):
   tap gives up (no viz, audio unaffected).
 - Once tapped, the video's audio flows through the extension's `AudioContext` until
   the page reloads; disabling only stops the analysis/posting.
-- Selectors (`iframe#youtube-player`, `[role="slider"][aria-label="Playback
-  position"]`) depend on zig-zag.fm's current markup; if the bar is not found the
-  strip falls back to the bottom of the window.
+- The YouTube iframe selector (`iframe#youtube-player`) depends on zig-zag.fm's
+  current markup; the floating window itself does not depend on the site layout.

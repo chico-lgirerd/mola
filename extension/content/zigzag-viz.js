@@ -1,6 +1,8 @@
 // Mola visualizer for zig-zag.fm (top frame). Receives audio frames from the
 // YouTube embed tap (content/youtube-tap.js) and draws them on a canvas,
 // mirroring src/render.c. Depends on lib/mola-core.js (globalThis.MolaCore).
+// The canvas lives in a draggable, resizable floating window styled after the
+// site's own island / artist windows.
 (function () {
   'use strict';
 
@@ -13,37 +15,79 @@
 
   const api = globalThis.browser ?? globalThis.chrome;
   const YT_ORIGIN = 'https://www.youtube.com';
-  const STRIP_H = 72;
   const STALE_MS = 1000;
-  const SLIDER_SEL = '[role="slider"][aria-label="Playback position"]';
+  const WIN_KEY = 'molaWindow';
+  const WIN_MIN_W = 240, WIN_MIN_H = 110, TITLE_H = 28;
+  const WIN_DEFAULT = { w: 420, h: 170 };
   const IFRAME_SEL = 'iframe[src*="youtube.com/embed"], iframe#youtube-player';
 
   // ---- storage helper ----
   // MV3: browser.* (Firefox) and chrome.* both return a promise when no
   // callback is passed; Firefox's browser.* rejects extra callback arguments.
-  function storageCall(method, arg) {
+  function storageCall(area, method, arg) {
     try {
-      return Promise.resolve(api.storage.sync[method](arg)).catch(() => undefined);
+      return Promise.resolve(api.storage[area][method](arg)).catch(() => undefined);
     } catch (e) {
       return Promise.resolve(undefined);
     }
   }
-  const storageGet = () => storageCall('get', Core.SETTINGS_KEY);
-  const storageSet = (obj) => storageCall('set', obj);
+  const storageGet = () => storageCall('sync', 'get', Core.SETTINGS_KEY);
+  const storageSet = (obj) => storageCall('sync', 'set', obj);
+  const winGet = () => storageCall('local', 'get', WIN_KEY);
+  const winSet = (obj) => storageCall('local', 'set', obj);
 
   // ---- state ----
   let settings = Core.sanitizeSettings({});
-  let host = null, shadow = null, canvas = null, ctx = null;
+  let host = null, shadow = null, canvas = null, ctx = null, body = null;
   let modeBtn = null, gradBtn = null;
-  let cssW = 0, cssH = STRIP_H, dpr = 1;
-  let resizeObs = null, mountTimer = 0, rafId = 0;
-  let visible = false, playing = false, lastFrameAt = 0, lastDrawAt = 0;
+  let cssW = 0, cssH = 0, dpr = 1;
+  let win = null; // {x, y, w, h} in CSS px, viewport coordinates
+  let resizeObs = null, rafId = 0;
+  let playing = false, lastFrameAt = 0, lastDrawAt = 0;
   let reduceMotion = false;
 
   let ranges = null, rangeKey = '';
   let smoothed = new Float32Array(0);
   let magnitudes = new Float32Array(0);
   let wave = new Float32Array(0);
+
+  // ---- window geometry ----
+  function sanitizeWin(o) {
+    const num = (v) => (typeof v === 'number' && isFinite(v) ? v : null);
+    const w = num(o && o.w), h = num(o && o.h), x = num(o && o.x), y = num(o && o.y);
+    const out = {
+      w: w === null ? WIN_DEFAULT.w : w,
+      h: h === null ? WIN_DEFAULT.h : h,
+      x: x,
+      y: y
+    };
+    return clampWin(out);
+  }
+
+  function clampWin(g) {
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const w = Math.round(Math.min(Math.max(g.w, WIN_MIN_W), Math.max(WIN_MIN_W, vw)));
+    const h = Math.round(Math.min(Math.max(g.h, WIN_MIN_H), Math.max(WIN_MIN_H, vh)));
+    // Default spot: bottom centre, clear of the player bar.
+    let x = g.x === null || g.x === undefined ? Math.round((vw - w) / 2) : g.x;
+    let y = g.y === null || g.y === undefined ? vh - h - 110 : g.y;
+    x = Math.round(Math.min(Math.max(x, 0), Math.max(0, vw - w)));
+    y = Math.round(Math.min(Math.max(y, 0), Math.max(0, vh - h)));
+    return { x: x, y: y, w: w, h: h };
+  }
+
+  function applyGeometry() {
+    if (!host) return;
+    if (!win) win = clampWin({ w: WIN_DEFAULT.w, h: WIN_DEFAULT.h, x: null, y: null });
+    host.style.left = win.x + 'px';
+    host.style.top = win.y + 'px';
+    host.style.width = win.w + 'px';
+    host.style.height = win.h + 'px';
+  }
+
+  function saveWin() {
+    if (win) winSet({ [WIN_KEY]: win });
+  }
 
   // ---- DOM ----
   function styleEl(text) {
@@ -52,40 +96,77 @@
     return s;
   }
 
-  function makeButton(label) {
+  function makeButton(label, text) {
     const b = document.createElement('button');
     b.type = 'button';
     b.setAttribute('aria-label', label);
+    if (text) b.textContent = text;
     const stop = (e) => e.stopPropagation();
     b.addEventListener('pointerdown', stop);
     b.addEventListener('keydown', stop);
     return b;
   }
 
+  // Drag helper: pointer-capture on `el`, calls onMove(dx, dy) from the start point.
+  function dragHandle(el, onStart, onMove, onEnd) {
+    let id = null, sx = 0, sy = 0;
+    el.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0 || e.target.closest('button')) return;
+      id = e.pointerId;
+      sx = e.clientX; sy = e.clientY;
+      el.setPointerCapture(id);
+      onStart();
+      e.preventDefault();
+    });
+    el.addEventListener('pointermove', (e) => {
+      if (e.pointerId !== id) return;
+      onMove(e.clientX - sx, e.clientY - sy);
+    });
+    const end = (e) => {
+      if (e.pointerId !== id) return;
+      id = null;
+      onEnd();
+    };
+    el.addEventListener('pointerup', end);
+    el.addEventListener('pointercancel', end);
+  }
+
   function createHost() {
     if (host) return;
     host = document.createElement('div');
     host.style.cssText =
-      'position:fixed;left:0;right:0;height:' + STRIP_H + 'px;z-index:20;' +
-      'pointer-events:none;display:none;margin:0;padding:0;border:0;';
+      'position:fixed;z-index:40;margin:0;padding:0;border:0;display:block;';
     shadow = host.attachShadow({ mode: 'closed' });
     shadow.appendChild(styleEl(
       ':host{all:initial}' +
+      '.win{position:absolute;inset:0;display:flex;flex-direction:column;box-sizing:border-box;' +
+      'background:#000;border:1px solid rgba(255,255,255,.15);color:#fff;overflow:hidden;' +
+      'font:12px Roboto,system-ui,-apple-system,sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.6)}' +
+      '.title{flex:none;height:' + TITLE_H + 'px;display:flex;align-items:center;gap:6px;' +
+      'padding:0 6px 0 10px;background:#000;cursor:move;user-select:none;-webkit-user-select:none;touch-action:none}' +
+      '.name{flex:1;min-width:0;font:13px Dico,Roboto,system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+      '.body{position:relative;flex:1;min-height:0}' +
       'canvas{position:absolute;left:0;top:0;width:100%;height:100%;display:block}' +
-      '.chip{position:absolute;top:4px;right:8px;display:flex;gap:4px;pointer-events:auto}' +
-      'button{font:11px/1 Roboto,system-ui,sans-serif;color:rgba(255,255,255,.75);' +
-      'background:rgba(8,8,14,.55);border:1px solid rgba(255,255,255,.15);' +
-      'border-radius:3px;padding:3px 6px;cursor:pointer;opacity:.55}' +
-      'button:hover,button:focus-visible{opacity:1;color:#fff}'
+      '.grip{position:absolute;right:0;bottom:0;width:16px;height:16px;cursor:nwse-resize;touch-action:none;' +
+      'background:linear-gradient(135deg,transparent 55%,rgba(255,255,255,.35) 55%)}' +
+      'button{font:11px/1 Roboto,system-ui,sans-serif;color:rgba(255,255,255,.75);background:transparent;' +
+      'border:1px solid rgba(255,255,255,.15);border-radius:3px;padding:3px 6px;cursor:pointer}' +
+      'button:hover,button:focus-visible{color:#fff;border-color:rgba(255,255,255,.4)}' +
+      '.close{border-color:transparent;font-size:14px;padding:2px 6px}'
     ));
-    canvas = document.createElement('canvas');
-    ctx = canvas.getContext('2d');
-    shadow.appendChild(canvas);
 
-    const chip = document.createElement('div');
-    chip.className = 'chip';
+    const winEl = document.createElement('div');
+    winEl.className = 'win';
+
+    const title = document.createElement('div');
+    title.className = 'title';
+    const name = document.createElement('div');
+    name.className = 'name';
+    name.textContent = 'visualizer';
     modeBtn = makeButton('Change visualizer mode');
     gradBtn = makeButton('Change visualizer color gradient');
+    const closeBtn = makeButton('Close window', '×');
+    closeBtn.className = 'close';
     modeBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       persist({ mode: Core.nextMode(settings.mode) });
@@ -96,26 +177,57 @@
       const i = Core.gradientIndex(settings.gradient);
       persist({ gradient: Core.GRADIENTS[(Math.max(i, 0) + 1) % n].name });
     });
-    chip.appendChild(modeBtn);
-    chip.appendChild(gradBtn);
-    shadow.appendChild(chip);
+    // Closing disables the visualizer; the popup toggle brings it back.
+    closeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      persist({ enabled: false });
+    });
+    title.append(name, modeBtn, gradBtn, closeBtn);
+
+    body = document.createElement('div');
+    body.className = 'body';
+    canvas = document.createElement('canvas');
+    ctx = canvas.getContext('2d');
+    body.appendChild(canvas);
+
+    const grip = document.createElement('div');
+    grip.className = 'grip';
+    body.appendChild(grip);
+
+    winEl.append(title, body);
+    shadow.appendChild(winEl);
+
+    let start = null;
+    dragHandle(title,
+      () => { start = { x: win.x, y: win.y }; },
+      (dx, dy) => {
+        win = clampWin({ x: start.x + dx, y: start.y + dy, w: win.w, h: win.h });
+        applyGeometry();
+      },
+      saveWin);
+    dragHandle(grip,
+      () => { start = { w: win.w, h: win.h }; },
+      (dx, dy) => {
+        win = clampWin({ x: win.x, y: win.y, w: start.w + dx, h: start.h + dy });
+        applyGeometry();
+      },
+      saveWin);
 
     (document.body || document.documentElement).appendChild(host);
     updateLabels();
+    applyGeometry();
 
     if (typeof ResizeObserver === 'function') {
       resizeObs = new ResizeObserver(resizeCanvas);
-      resizeObs.observe(host);
+      resizeObs.observe(body);
     }
     resizeCanvas();
-    applyMount();
   }
 
   function removeHost() {
     if (resizeObs) { resizeObs.disconnect(); resizeObs = null; }
     if (host) host.remove();
-    host = shadow = canvas = ctx = modeBtn = gradBtn = null;
-    visible = false;
+    host = shadow = canvas = ctx = body = modeBtn = gradBtn = null;
   }
 
   function updateLabels() {
@@ -126,51 +238,13 @@
   }
 
   function resizeCanvas() {
-    if (!canvas || !host) return;
+    if (!canvas || !body) return;
     dpr = window.devicePixelRatio || 1;
-    cssW = Math.max(1, Math.floor(host.clientWidth || window.innerWidth));
-    cssH = STRIP_H;
+    cssW = Math.max(1, Math.floor(body.clientWidth));
+    cssH = Math.max(1, Math.floor(body.clientHeight));
     canvas.width = Math.round(cssW * dpr);
     canvas.height = Math.round(cssH * dpr);
-    if (visible) draw();
-  }
-
-  // ---- mount ----
-  function findAboveBarTop() {
-    const slider = document.querySelector(SLIDER_SEL);
-    if (!slider) return null;
-    let el = slider.parentElement;
-    while (el && el !== document.documentElement) {
-      const pos = getComputedStyle(el).position;
-      if (pos === 'fixed' || pos === 'sticky') return el.getBoundingClientRect().top;
-      el = el.parentElement;
-    }
-    el = slider.parentElement;
-    while (el && el !== document.documentElement) {
-      if (Math.abs(el.getBoundingClientRect().bottom - window.innerHeight) <= 4) {
-        return el.getBoundingClientRect().top;
-      }
-      el = el.parentElement;
-    }
-    return null;
-  }
-
-  function applyMount() {
-    if (!host) return;
-    let mount = settings.mount;
-    let top = null;
-    if (mount === 'above-bar') {
-      top = findAboveBarTop();
-      if (top === null) mount = 'bottom';
-    }
-    if (mount === 'top') {
-      host.style.top = '0'; host.style.bottom = 'auto';
-    } else if (mount === 'above-bar') {
-      host.style.top = 'auto';
-      host.style.bottom = Math.max(0, Math.round(window.innerHeight - top)) + 'px';
-    } else {
-      host.style.top = 'auto'; host.style.bottom = '0';
-    }
+    draw();
   }
 
   // ---- settings ----
@@ -184,8 +258,6 @@
 
   function applySettings(next) {
     settings = Core.sanitizeSettings(next);
-    clearInterval(mountTimer);
-    mountTimer = 0;
     if (!settings.enabled) {
       cancelAnimationFrame(rafId);
       rafId = 0;
@@ -194,9 +266,8 @@
     }
     createHost();
     updateLabels();
-    applyMount();
-    mountTimer = setInterval(applyMount, 1000);
-    if (visible) { startLoop(); }
+    draw();
+    if (playing && performance.now() - lastFrameAt <= STALE_MS) startLoop();
   }
 
   // ---- incoming frames ----
@@ -218,8 +289,7 @@
     if (Core.isValidFrame(d) && d.kind === 'frame') {
       onFrame(d);
     } else if (d.type === Core.MSG_TYPE && d.kind === 'state' && d.playing === false) {
-      playing = false;
-      hide();
+      idle();
     }
   }
 
@@ -238,33 +308,30 @@
 
     playing = true;
     lastFrameAt = performance.now();
-    if (!visible) show();
-  }
-
-  // ---- visibility / loop ----
-  function show() {
-    if (!host) return;
-    visible = true;
-    host.style.display = 'block';
-    resizeCanvas();
     startLoop();
   }
 
-  function hide() {
-    visible = false;
+  // ---- loop ----
+  // The window stays on screen while enabled; with no audio it just shows empty.
+  function idle() {
+    playing = false;
     cancelAnimationFrame(rafId);
     rafId = 0;
-    if (host) host.style.display = 'none';
+    smoothed.fill(0);
+    wave = new Float32Array(0);
+    draw();
   }
 
   function startLoop() {
-    if (!rafId && visible) rafId = requestAnimationFrame(tick);
+    if (!rafId && host) {
+      rafId = requestAnimationFrame(tick);
+    }
   }
 
   function tick(now) {
     rafId = 0;
-    if (!visible || !host) return;
-    if (!playing || performance.now() - lastFrameAt > STALE_MS) { hide(); return; }
+    if (!host) return;
+    if (!playing || performance.now() - lastFrameAt > STALE_MS) { idle(); return; }
     if (!reduceMotion || now - lastDrawAt >= 100) {
       lastDrawAt = now;
       draw();
@@ -281,7 +348,7 @@
     const grad = Core.GRADIENTS[Math.max(Core.gradientIndex(settings.gradient), 0)];
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = 'rgba(' + Core.BG_COLOR[0] + ',' + Core.BG_COLOR[1] + ',' + Core.BG_COLOR[2] + ',0.85)';
+    ctx.fillStyle = 'rgb(' + Core.BG_COLOR[0] + ',' + Core.BG_COLOR[1] + ',' + Core.BG_COLOR[2] + ')';
     ctx.fillRect(0, 0, w, h);
 
     if (settings.mode === 'wave') drawWave(w, h, grad);
@@ -344,7 +411,10 @@
   }
 
   window.addEventListener('message', onMessage);
-  window.addEventListener('resize', () => { resizeCanvas(); applyMount(); });
+  window.addEventListener('resize', () => {
+    if (win) win = clampWin(win);
+    applyGeometry();
+  });
 
   try {
     api.storage.onChanged.addListener((changes, area) => {
@@ -353,7 +423,8 @@
     });
   } catch (e) { /* storage unavailable: run with defaults */ }
 
-  storageGet().then((stored) => {
-    applySettings((stored && stored[Core.SETTINGS_KEY]) || {});
+  Promise.all([winGet(), storageGet()]).then(([w, s]) => {
+    win = sanitizeWin(w && w[WIN_KEY]);
+    applySettings((s && s[Core.SETTINGS_KEY]) || {});
   });
 })();

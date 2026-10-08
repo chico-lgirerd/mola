@@ -6,7 +6,6 @@
   const $ = (id) => document.getElementById(id);
 
   const MODE_LABELS = { bars: 'Bars', wave: 'Waveform', bezier: 'Bezier wave' };
-  const MOUNT_LABELS = { 'above-bar': 'Above player bar', bottom: 'Bottom of window', top: 'Top of window' };
   const S_MIN = 0.005, S_MAX = 1, SL_MAX = 1000;
 
   const sensToSlider = (v) => Math.round(Math.log(v / S_MIN) / Math.log(S_MAX / S_MIN) * SL_MAX);
@@ -72,7 +71,6 @@
   function render() {
     $('enabled').checked = !!state.enabled;
     $('mode').value = state.mode;
-    $('mount').value = state.mount;
     $('bars').value = state.bars;
     $('bars-out').textContent = state.bars;
     $('sensitivity').value = sensToSlider(state.sensitivity);
@@ -82,12 +80,10 @@
 
   async function init() {
     fillSelect($('mode'), Core.MODES, MODE_LABELS);
-    fillSelect($('mount'), Core.MOUNTS, MOUNT_LABELS);
     buildGradients();
 
     $('enabled').addEventListener('change', (e) => { state.enabled = e.target.checked; save(); });
     $('mode').addEventListener('change', (e) => { state.mode = e.target.value; save(); });
-    $('mount').addEventListener('change', (e) => { state.mount = e.target.value; save(); });
     $('bars').addEventListener('input', (e) => {
       state.bars = parseInt(e.target.value, 10);
       $('bars-out').textContent = state.bars;

@@ -25,8 +25,7 @@
     { name: 'tropic',  lo: [220, 30, 140], hi: [170, 220, 40] }
   ];
   var MODES = ['bars', 'wave', 'bezier'];
-  var MOUNTS = ['above-bar', 'bottom', 'top'];
-  var DEFAULTS = { enabled: true, mode: 'bars', gradient: 'dusk', bars: 100, sensitivity: 0.05, mount: 'above-bar' };
+  var DEFAULTS = { enabled: true, mode: 'bars', gradient: 'dusk', bars: 100, sensitivity: 0.05 };
   var SETTINGS_KEY = 'molaSettings';
   var MSG_TYPE = 'zz-viz', MSG_VERSION = 1, WAVE_POINTS = 1024;
 
@@ -240,8 +239,7 @@
       mode: pick(o.mode, MODES, DEFAULTS.mode),
       gradient: DEFAULTS.gradient,
       bars: DEFAULTS.bars,
-      sensitivity: DEFAULTS.sensitivity,
-      mount: pick(o.mount, MOUNTS, DEFAULTS.mount)
+      sensitivity: DEFAULTS.sensitivity
     };
     var g = gradientIndex(o.gradient);
     if (g >= 0) out.gradient = GRADIENTS[g].name;
@@ -284,7 +282,7 @@
   var MolaCore = {
     MIN_FREQ: MIN_FREQ, MAX_FREQ_CAP: MAX_FREQ_CAP, MOLA_FFT_SIZE: MOLA_FFT_SIZE,
     HANN_COHERENT_GAIN: HANN_COHERENT_GAIN, BLACKMAN_COHERENT_GAIN: BLACKMAN_COHERENT_GAIN,
-    BG_COLOR: BG_COLOR, GRADIENTS: GRADIENTS, MODES: MODES, MOUNTS: MOUNTS, DEFAULTS: DEFAULTS,
+    BG_COLOR: BG_COLOR, GRADIENTS: GRADIENTS, MODES: MODES, DEFAULTS: DEFAULTS,
     ATTACK: ATTACK, RELEASE: RELEASE, SETTINGS_KEY: SETTINGS_KEY,
     MSG_TYPE: MSG_TYPE, MSG_VERSION: MSG_VERSION, WAVE_POINTS: WAVE_POINTS,
     nextMode: nextMode, gradientIndex: gradientIndex, maxFreqFor: maxFreqFor,
