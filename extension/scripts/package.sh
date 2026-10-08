@@ -7,8 +7,8 @@ cd "$EXT_DIR"
 
 IGNORE_FILES=(PLAN.md tests scripts package.json dist)
 
-echo "==> node --test tests/"
-node --test tests/
+echo "==> node --test"
+node --test tests/*.test.js
 
 echo "==> web-ext lint"
 npx --yes web-ext@8 lint --source-dir .

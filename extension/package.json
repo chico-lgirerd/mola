@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "test": "node --test tests/",
+    "test": "node --test tests/*.test.js",
     "lint": "npx --yes web-ext@8 lint --source-dir .",
     "build": "npx --yes web-ext@8 build --source-dir . --artifacts-dir dist --overwrite-dest --ignore-files PLAN.md tests scripts package.json dist"
   }
